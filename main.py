@@ -1,29 +1,12 @@
-# backend.py
-
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import FileResponse
-from typing import Optional
+from flask import Flask, request, send_file
+from flask_cors import CORS
+from werkzeug.utils import secure_filename
 import cv2
 import numpy as np
 import shutil
-import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
-
-origins = [
-    "*"
-]
-
-app.add_middleware(
-    CORSMiddleware,x
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["*"],
-)
-
+app = Flask(__name__)
+CORS(app, resources={r"*":{"origins":"*"}})
 
 def dark_channel(img, size=15):
     r, g, b = cv2.split(img)
@@ -73,26 +56,31 @@ def dehaze_image(file_path):
         print(f"Error processing image: {e}")
         return None
 
-@app.post("/dehaze/")
-async def dehaze(upload_file: UploadFile = File(...)):
+@app.route("/dehaze/", methods=["POST"])
+def dehaze():
     try:
-        with open(f"uploads/{upload_file.filename}", "wb") as buffer:
-            shutil.copyfileobj(upload_file.file, buffer)
-        dehazed_image = dehaze_image(f"uploads/{upload_file.filename}")
-        if dehazed_image is not None:
-            output_file_path = f"uploads/dehazed_{upload_file.filename}"
-            cv2.imwrite(output_file_path, dehazed_image * 255)
-            return FileResponse(output_file_path)
+        file = request.files['upload_file']
+        if file:
+            filename = secure_filename(file.filename)
+            file.save(f"uploads/{filename}")
+            dehazed_image = dehaze_image(f"uploads/{filename}")
+            if dehazed_image is not None:
+                output_file_path = f"uploads/dehazed_{filename}"
+                cv2.imwrite(output_file_path, dehazed_image * 255)
+                return send_file(output_file_path, as_attachment=True)
+            else:
+                return {"error": "Failed to process image"}
         else:
-            return {"error": "Failed to process image"}
+            return {"error": "No file provided"}
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/download/{filename}")
-async def download_file(filename: str):
+@app.route("/download/<filename>", methods=["GET"])
+def download_file(filename):
     try:
-        return FileResponse(f"uploads/{filename}")
+        return send_file(f"uploads/{filename}", as_attachment=True)
     except Exception as e:
         return {"error": str(e)}
-    
-uvicorn.run(app)
+
+if __name__ == "__main__":
+    app.run(debug=True)

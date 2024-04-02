@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/Users/b.deewakarrao/Desktop/dehaze/myenv"
+set -gx VIRTUAL_ENV "/Users/b.deewakarrao/Desktop/DEHAZE.AI/dehaze/myenv"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH
